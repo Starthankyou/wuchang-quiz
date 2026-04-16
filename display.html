@@ -274,13 +274,13 @@
 
   // ⚠️ 換成你自己的 Firebase 設定（與 form.html 相同）
   const firebaseConfig = {
-    apiKey: "AIzaSyAWpWx3jMsRYLFXRZFdtqI-SfiPmV16xFY",
-    authDomain: "wuchang-quiz.firebaseapp.com",
-    databaseURL: "https://wuchang-quiz-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "wuchang-quiz",
-    storageBucket: "wuchang-quiz.firebasestorage.app",
-    messagingSenderId: "845309148289",
-    appId: "1:845309148289:web:7c296d6a51798f43352180"
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+    projectId: "YOUR_PROJECT",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_ID",
+    appId: "YOUR_APP_ID"
   };
 
   // ⚠️ 換成你自己的 Cloudflare Worker URL（見 README）
@@ -371,15 +371,18 @@
     document.getElementById('status-text').textContent = '同義詞合併中...';
 
     try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 3000);
       const resp = await fetch(WORKER_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers })
+        body: JSON.stringify({ answers }),
+        signal: controller.signal
       });
-
-      const data = await resp.json();
-      const raw = data.content[0].text.replace(/```json|```/g, '').trim();
-      const merged = JSON.parse(raw);
+      clearTimeout(timeout);
+      if (!resp.ok) throw new Error("worker error");
+      const merged = await resp.json();
+      if (!Array.isArray(merged)) throw new Error("bad response");
       mergedCache[currentQ] = merged;
       lastMergeCount[currentQ] = answers.length;
     } catch(e) {
@@ -393,6 +396,7 @@
         .map(([word, count]) => ({ word, count }))
         .sort((a,b) => b.count - a.count)
         .slice(0, 20);
+      lastMergeCount[currentQ] = answers.length;
     }
 
     document.getElementById('status-text').textContent =
