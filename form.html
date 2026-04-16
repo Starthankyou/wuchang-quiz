@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>無常 — 匿名填答</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Noto Sans TC', sans-serif;
+    background: #0f0f13;
+    color: #e8e8f0;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 0 env(safe-area-inset-bottom, 24px);
+  }
+
+  .header {
+    width: 100%;
+    text-align: center;
+    padding: 36px 24px 20px;
+    background: linear-gradient(180deg, rgba(124,111,255,0.08) 0%, transparent 100%);
+    border-bottom: 1px solid #1e1e30;
+  }
+
+  .live-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(74,222,128,0.1);
+    border: 1px solid rgba(74,222,128,0.25);
+    border-radius: 100px;
+    padding: 4px 12px;
+    font-size: 11px;
+    color: #4ade80;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    margin-bottom: 14px;
+  }
+
+  .live-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: #4ade80;
+    animation: blink 1.4s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .header h1 {
+    font-size: 13px;
+    font-weight: 500;
+    color: #5a5a7a;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .tabs {
+    display: flex;
+    width: 100%;
+    max-width: 480px;
+    padding: 16px 20px 0;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 11px 8px;
+    border: none;
+    background: transparent;
+    color: #5a5a7a;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 17px;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 2px solid #1e1e30;
+    transition: all 0.2s;
+  }
+
+  .tab.active {
+    color: #7c6fff;
+    border-bottom-color: #7c6fff;
+    font-weight: 700;
+  }
+
+  .main {
+    width: 100%;
+    max-width: 480px;
+    padding: 28px 20px 20px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .q-tag {
+    font-size: 16px;
+    font-weight: 700;
+    color: #7c6fff;
+    margin-bottom: 14px;
+    letter-spacing: 0.05em;
+  }
+
+  .question-text {
+    font-size: 26px;
+    font-weight: 700;
+    line-height: 1.6;
+    color: #e8e8f0;
+    text-align: center;
+    margin-bottom: 14px;
+    width: 100%;
+  }
+
+  .question-hint {
+    font-size: 18px;
+    font-weight: 500;
+    color: #a0a0c0;
+    text-align: center;
+    margin-bottom: 10px;
+  }
+
+  .counter {
+    font-size: 15px;
+    color: #5a5a7a;
+    text-align: center;
+    margin-bottom: 28px;
+  }
+
+  textarea {
+    display: block;
+    width: 100%;
+    background: #1a1a24;
+    border: 1.5px solid #2e2e42;
+    border-radius: 14px;
+    padding: 16px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 17px;
+    line-height: 1.6;
+    color: #e8e8f0;
+    resize: none;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  textarea::placeholder { color: #3a3a5a; }
+
+  textarea:focus {
+    border-color: #7c6fff;
+    box-shadow: 0 0 0 3px rgba(124,111,255,0.18);
+  }
+
+  .char-count {
+    align-self: flex-end;
+    font-size: 14px;
+    color: #3a3a5a;
+    margin-top: 8px;
+    margin-bottom: 20px;
+  }
+
+  .char-count.warn { color: #f87171; }
+
+  .submit-btn {
+    display: block;
+    width: 100%;
+    padding: 18px;
+    background: #7c6fff;
+    border: none;
+    border-radius: 14px;
+    color: white;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: all 0.15s;
+    box-shadow: 0 4px 20px rgba(124,111,255,0.35);
+  }
+
+  .submit-btn:active { transform: scale(0.97); filter: brightness(0.9); }
+  .submit-btn:disabled { opacity: 0.35; }
+
+  .toast {
+    position: fixed;
+    bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: #4ade80;
+    color: #052010;
+    padding: 13px 28px;
+    border-radius: 100px;
+    font-size: 15px;
+    font-weight: 700;
+    white-space: nowrap;
+    z-index: 999;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    pointer-events: none;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  .toast.error { background: #f87171; color: #1a0000; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="live-badge"><div class="live-dot"></div>LIVE · 匿名</div>
+  <h1>即時文字雲問卷</h1>
+</div>
+
+<div class="tabs">
+  <button class="tab active" data-q="q1">無常聯想</button>
+  <button class="tab" data-q="q2">無常意義</button>
+</div>
+
+<div class="main">
+  <div class="q-tag" id="q-tag">Q1</div>
+  <div class="question-text" id="q-title">看到「無常」，你會想到什麼?</div>
+  <div class="question-hint" id="q-hint">關鍵字回答即可</div>
+  <div class="counter" id="counter">已有 0 則回答</div>
+
+  <textarea id="answer-input"
+    rows="3"
+    maxlength="30"
+    placeholder="在這裡輸入你的答案..."
+    style="height: 90px;"
+  ></textarea>
+  <div class="char-count" id="char-count">0 / 30</div>
+
+  <button class="submit-btn" id="submit-btn">送出答案</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, push, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  // ⚠️ 換成你自己的 Firebase 設定
+  const firebaseConfig = {
+    apiKey: "AIzaSyAWpWx3jMsRYLFXRZFdtqI-SfiPmV16xFY",
+    authDomain: "wuchang-quiz.firebaseapp.com",
+    databaseURL: "https://wuchang-quiz-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "wuchang-quiz",
+    storageBucket: "wuchang-quiz.firebasestorage.app",
+    messagingSenderId: "845309148289",
+    appId: "1:845309148289:web:7c296d6a51798f43352180"
+  };
+
+  const QUESTIONS = {
+    q1: {
+      tag: "Q1", title: "看到「無常」，你會想到什麼?",
+      hint: "關鍵字回答即可", placeholder: "在這裡輸入你的答案...",
+      maxLen: 30, height: "90px"
+    },
+    q2: {
+      tag: "Q2", title: "為何人生要有「無常」?",
+      hint: "請盡量詳答沒關係", placeholder: "在這裡輸入你的答案...",
+      maxLen: 300, height: "180px"
+    }
+  };
+
+  let currentQ = "q1";
+  let counts = { q1: 0, q2: 0 };
+  let db = null;
+
+  try {
+    const app = initializeApp(firebaseConfig);
+    db = getDatabase(app);
+    ["q1", "q2"].forEach(q => {
+      onValue(ref(db, "answers/" + q), snap => {
+        counts[q] = snap.exists() ? Object.keys(snap.val()).length : 0;
+        if (currentQ === q) document.getElementById("counter").textContent = "已有 " + counts[q] + " 則回答";
+      });
+    });
+  } catch(e) {
+    console.warn("Firebase 未設定");
+  }
+
+  function switchQ(qKey) {
+    currentQ = qKey;
+    const q = QUESTIONS[qKey];
+    document.getElementById("q-tag").textContent = q.tag;
+    document.getElementById("q-title").textContent = q.title;
+    document.getElementById("q-hint").textContent = q.hint;
+    const input = document.getElementById("answer-input");
+    input.placeholder = q.placeholder;
+    input.maxLength = q.maxLen;
+    input.style.height = q.height;
+    input.value = "";
+    document.getElementById("char-count").textContent = "0 / " + q.maxLen;
+    document.getElementById("counter").textContent = "已有 " + counts[qKey] + " 則回答";
+  }
+
+  document.querySelectorAll(".tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+      tab.classList.add("active");
+      switchQ(tab.dataset.q);
+    });
+  });
+
+  document.getElementById("answer-input").addEventListener("input", () => {
+    const max = QUESTIONS[currentQ].maxLen;
+    const len = document.getElementById("answer-input").value.length;
+    const el = document.getElementById("char-count");
+    el.textContent = len + " / " + max;
+    el.classList.toggle("warn", len >= max * 0.9);
+  });
+
+  document.getElementById("submit-btn").addEventListener("click", async () => {
+    const text = document.getElementById("answer-input").value.trim();
+    if (!text) { showToast("請輸入答案", true); return; }
+    if (!db) { showToast("Firebase 尚未設定", true); return; }
+
+    const btn = document.getElementById("submit-btn");
+    btn.disabled = true;
+    btn.textContent = "送出中...";
+
+    try {
+      await push(ref(db, "answers/" + currentQ), { text, ts: Date.now() });
+      document.getElementById("answer-input").value = "";
+      document.getElementById("char-count").textContent = "0 / " + QUESTIONS[currentQ].maxLen;
+      showToast("✓ 已送出！");
+    } catch(e) {
+      showToast("送出失敗，請再試", true);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "送出答案";
+    }
+  });
+
+  function showToast(msg, isError) {
+    const t = document.getElementById("toast");
+    t.textContent = msg;
+    t.className = "toast" + (isError ? " error" : "");
+    void t.offsetWidth;
+    t.classList.add("show");
+    setTimeout(() => t.classList.remove("show"), 2200);
+  }
+</script>
+</body>
+</html>
