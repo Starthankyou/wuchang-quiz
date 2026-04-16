@@ -283,10 +283,7 @@
     appId: "YOUR_APP_ID"
   };
 
-  // ⚠️ 換成你自己的 Cloudflare Worker URL（見 README）
-  const WORKER_URL = "https://YOUR_WORKER.YOUR_SUBDOMAIN.workers.dev/merge";
-
-  // 問題設定 — 與 form.html 保持同步
+  // 問題設定
   const QUESTIONS = {
     q1: { label: "無常聯想", text: "看到「無常」，你會想到什麼? (關鍵字回答即可)" },
     q2: { label: "無常意義", text: "為何人生要有「無常」? (請盡量詳答沒關係)" }
@@ -304,9 +301,9 @@
 
   let currentQ = 'q1';
   let allAnswers = { q1: [], q2: [] };
-  let mergedCache = { q1: null, q2: null };
-  let mergeTimer = null;
-  let lastMergeCount = { q1: 0, q2: 0 };
+  let freqCache = { q1: null, q2: null };
+  let updateTimer = null;
+  let lastCount = { q1: 0, q2: 0 };
   let isRendering = false;
 
   // Switch question tab
@@ -343,62 +340,39 @@
 
       if (q === currentQ) {
         updateTopbar();
-        scheduleMerge();
+        scheduleUpdate();
       }
     });
   });
 
-  // Debounced merge trigger
-  function scheduleMerge() {
-    if (mergeTimer) clearTimeout(mergeTimer);
-    mergeTimer = setTimeout(doMerge, 800);
+  // Debounced update
+  function scheduleUpdate() {
+    if (updateTimer) clearTimeout(updateTimer);
+    updateTimer = setTimeout(buildFreq, 300);
   }
 
-  // Call Claude API to merge synonyms
-  async function doMerge() {
+  // 純字頻統計，相同答案放大
+  function buildFreq() {
     const answers = allAnswers[currentQ];
     if (answers.length === 0) {
+      freqCache[currentQ] = [];
       renderCloud();
       return;
     }
-
-    // If count hasn't changed, use cache
-    if (mergedCache[currentQ] && lastMergeCount[currentQ] === answers.length) {
+    if (freqCache[currentQ] && lastCount[currentQ] === answers.length) {
       renderCloud();
       return;
     }
-
-    document.getElementById('status-text').textContent = '同義詞合併中...';
-
-    try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3000);
-      const resp = await fetch(WORKER_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ answers }),
-        signal: controller.signal
-      });
-      clearTimeout(timeout);
-      if (!resp.ok) throw new Error("worker error");
-      const merged = await resp.json();
-      if (!Array.isArray(merged)) throw new Error("bad response");
-      mergedCache[currentQ] = merged;
-      lastMergeCount[currentQ] = answers.length;
-    } catch(e) {
-      // Fallback: simple frequency count without merging
-      const freq = {};
-      answers.forEach(a => {
-        const key = a.trim().slice(0, 20);
-        freq[key] = (freq[key] || 0) + 1;
-      });
-      mergedCache[currentQ] = Object.entries(freq)
-        .map(([word, count]) => ({ word, count }))
-        .sort((a,b) => b.count - a.count)
-        .slice(0, 20);
-      lastMergeCount[currentQ] = answers.length;
-    }
-
+    const freq = {};
+    answers.forEach(a => {
+      const key = a.trim();
+      if (key) freq[key] = (freq[key] || 0) + 1;
+    });
+    freqCache[currentQ] = Object.entries(freq)
+      .map(([word, count]) => ({ word, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 30);
+    lastCount[currentQ] = answers.length;
     document.getElementById('status-text').textContent =
       `上次更新：${new Date().toLocaleTimeString('zh-TW')}`;
     renderCloud();
@@ -411,7 +385,7 @@
 
     const container = document.getElementById('word-cloud');
     const emptyState = document.getElementById('empty-state');
-    const words = mergedCache[currentQ] || [];
+    const words = freqCache[currentQ] || [];
 
     if (words.length === 0) {
       container.innerHTML = '';
