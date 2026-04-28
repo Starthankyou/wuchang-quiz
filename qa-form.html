@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>QA 提問</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;600;700;900&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Noto Sans TC', sans-serif;
+    background: #1c1c1e;
+    color: #ffffff;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: #2c2c2e;
+    padding: 20px 20px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    border-bottom: 1px solid #3a3a3c;
+  }
+  .header-left { display: flex; align-items: center; gap: 10px; }
+  .live-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #ff375f;
+    border-radius: 100px;
+    padding: 5px 12px;
+    font-size: 12px; color: #fff; font-weight: 700; letter-spacing: 0.06em;
+  }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: #fff; animation: blink 1.2s ease-in-out infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+  .header h1 { font-size: 18px; font-weight: 700; color: #fff; }
+  .q-total { font-size: 14px; color: #aeaeb2; font-weight: 600; }
+
+  /* ── Tabs ── */
+  .tabs {
+    display: flex;
+    background: #2c2c2e;
+    border-bottom: 1px solid #3a3a3c;
+    flex-shrink: 0;
+  }
+  .tab {
+    flex: 1; padding: 14px 8px;
+    border: none; background: transparent;
+    color: #aeaeb2;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 15px; font-weight: 600;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab.active { color: #ff375f; border-bottom-color: #ff375f; }
+
+  /* ── 列表區 ── */
+  .list-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 16px 140px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .empty {
+    text-align: center;
+    padding: 60px 24px;
+    color: #636366;
+  }
+  .empty-icon { font-size: 52px; margin-bottom: 14px; }
+  .empty p { font-size: 17px; color: #8e8e93; line-height: 1.6; }
+
+  /* ── 問題卡片 ── */
+  .q-card {
+    background: #2c2c2e;
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    border: 1px solid #3a3a3c;
+    animation: fadeUp 0.3s ease both;
+  }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+  .q-card.top { border-color: #ff375f; background: #2c1f22; }
+
+  /* 按讚 */
+  .vote-col {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 5px; flex-shrink: 0;
+  }
+  .vote-btn {
+    width: 46px; height: 46px;
+    background: #3a3a3c;
+    border: none; border-radius: 12px;
+    font-size: 20px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s;
+    color: #fff;
+  }
+  .vote-btn:active { transform: scale(0.85); }
+  .vote-btn.voted { background: #ff375f; }
+  .vote-num {
+    font-size: 15px; font-weight: 700;
+    color: #aeaeb2; line-height: 1;
+  }
+  .vote-num.has-votes { color: #ff375f; }
+
+  /* 問題內容 */
+  .q-body { flex: 1; min-width: 0; }
+  .q-text {
+    font-size: 17px; font-weight: 600;
+    line-height: 1.6; color: #ffffff;
+    margin-bottom: 10px;
+    word-break: break-all;
+  }
+  .q-meta {
+    display: flex; align-items: center;
+    gap: 8px; font-size: 13px; color: #8e8e93;
+    flex-wrap: wrap;
+  }
+  .new-pill {
+    background: #ff375f;
+    color: #fff; font-size: 11px; font-weight: 700;
+    padding: 2px 8px; border-radius: 100px;
+  }
+
+  /* ── 底部提問區 ── */
+  .ask-panel {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: #2c2c2e;
+    border-top: 1px solid #3a3a3c;
+    padding: 14px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+    z-index: 60;
+  }
+
+  /* 收合 */
+  .ask-trigger {
+    width: 100%;
+    background: #3a3a3c;
+    border: none; border-radius: 14px;
+    padding: 16px 20px;
+    color: #8e8e93;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 16px; font-weight: 500;
+    text-align: left; cursor: pointer;
+    transition: background 0.2s;
+  }
+  .ask-trigger:active { background: #48484a; }
+
+  /* 展開 */
+  .ask-expanded { display: none; flex-direction: column; gap: 12px; }
+  .ask-expanded.open { display: flex; }
+
+  .ask-header {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .ask-title { font-size: 16px; font-weight: 700; color: #fff; }
+  .close-btn {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: #48484a; border: none;
+    color: #fff; font-size: 18px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  textarea#q-input {
+    width: 100%; height: 100px;
+    background: #3a3a3c;
+    border: 2px solid #48484a;
+    border-radius: 14px; padding: 14px 16px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 17px; line-height: 1.6;
+    color: #ffffff;
+    resize: none; outline: none;
+    -webkit-appearance: none;
+    transition: border-color 0.2s;
+  }
+  textarea#q-input::placeholder { color: #636366; }
+  textarea#q-input:focus { border-color: #ff375f; }
+
+  input#name-input {
+    width: 100%;
+    background: #3a3a3c;
+    border: 2px solid #48484a;
+    border-radius: 12px; padding: 13px 16px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 16px; color: #ffffff;
+    outline: none; -webkit-appearance: none;
+    transition: border-color 0.2s;
+  }
+  input#name-input::placeholder { color: #636366; }
+  input#name-input:focus { border-color: #ff375f; }
+
+  .ask-bottom {
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .char-count { font-size: 13px; color: #636366; }
+  .char-count.warn { color: #ff453a; }
+
+  .submit-btn {
+    padding: 13px 28px;
+    background: #ff375f; border: none; border-radius: 12px;
+    color: #fff;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 16px; font-weight: 700;
+    cursor: pointer; transition: all 0.15s;
+  }
+  .submit-btn:active { transform: scale(0.96); filter: brightness(0.9); }
+  .submit-btn:disabled { opacity: 0.4; transform: none; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 160px; left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #30d158; color: #fff;
+    padding: 12px 24px; border-radius: 100px;
+    font-size: 15px; font-weight: 700;
+    white-space: nowrap; z-index: 999;
+    transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    pointer-events: none; opacity: 0;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+  .toast.error { background: #ff453a; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <div class="live-badge"><div class="dot"></div>LIVE</div>
+    <h1>現場提問</h1>
+  </div>
+  <div class="q-total" id="q-total">0 則問題</div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" id="tab-votes" data-sort="votes">🔥 最多讚</button>
+  <button class="tab" id="tab-new" data-sort="new">🕐 最新</button>
+</div>
+
+<div class="list-area">
+  <div id="q-list">
+    <div class="empty" id="empty-state">
+      <div class="empty-icon">🙋</div>
+      <p>還沒有問題<br>來第一個提問吧！</p>
+    </div>
+  </div>
+</div>
+
+<div class="ask-panel">
+  <button class="ask-trigger" id="ask-trigger">✏️ 有問題想問？點這裡提問</button>
+  <div class="ask-expanded" id="ask-expanded">
+    <div class="ask-header">
+      <div class="ask-title">提問</div>
+      <button class="close-btn" id="close-btn">×</button>
+    </div>
+    <textarea id="q-input" maxlength="200" placeholder="輸入你的問題..."></textarea>
+    <input id="name-input" type="text" maxlength="20" placeholder="名字或暱稱（選填，可匿名）">
+    <div class="ask-bottom">
+      <div class="char-count" id="char-count">0 / 200</div>
+      <button class="submit-btn" id="submit-btn">送出問題</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  function openAskPanel() {
+    document.getElementById('ask-trigger').style.display = 'none';
+    document.getElementById('ask-expanded').classList.add('open');
+    setTimeout(() => document.getElementById('q-input').focus(), 100);
+  }
+  function closeAskPanel() {
+    document.getElementById('ask-expanded').classList.remove('open');
+    document.getElementById('ask-trigger').style.display = 'block';
+  }
+  document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('ask-trigger').addEventListener('click', openAskPanel);
+    document.getElementById('close-btn').addEventListener('click', closeAskPanel);
+  });
+</script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getDatabase, ref, push, runTransaction, onValue } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    databaseURL: "https://YOUR_PROJECT-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "YOUR_PROJECT",
+    storageBucket: "YOUR_PROJECT.firebasestorage.app",
+    messagingSenderId: "YOUR_ID",
+    appId: "YOUR_APP_ID"
+  };
+
+  let db = null;
+  try {
+    const app = initializeApp(firebaseConfig);
+    db = getDatabase(app);
+  } catch(e) { console.warn("Firebase 未設定"); }
+
+  let allQ = [];
+  let sortMode = 'votes';
+  let votedIds = new Set(JSON.parse(localStorage.getItem('qa_voted') || '[]'));
+
+  // ── Tabs ──
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      sortMode = tab.dataset.sort;
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      render();
+    });
+  });
+
+  // ── 提問面板（由外部 script 處理）──
+
+  // ── 字數 ──
+  document.getElementById('q-input').addEventListener('input', () => {
+    const len = document.getElementById('q-input').value.length;
+    const el = document.getElementById('char-count');
+    el.textContent = len + ' / 200';
+    el.classList.toggle('warn', len >= 180);
+  });
+
+  // ── 送出 ──
+  document.getElementById('submit-btn').addEventListener('click', async () => {
+    const text = document.getElementById('q-input').value.trim();
+    const name = document.getElementById('name-input').value.trim() || '匿名';
+    if (!text) { showToast('請輸入問題', true); return; }
+    if (!db) { showToast('Firebase 未設定', true); return; }
+
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true; btn.textContent = '送出中...';
+
+    try {
+      await push(ref(db, 'questions'), { text, name, votes: 0, ts: Date.now() });
+      document.getElementById('q-input').value = '';
+      document.getElementById('name-input').value = '';
+      document.getElementById('char-count').textContent = '0 / 200';
+      closeAskPanel();
+      showToast('✓ 問題已送出！');
+    } catch(e) {
+      showToast('送出失敗，請再試', true);
+    } finally {
+      btn.disabled = false; btn.textContent = '送出問題';
+    }
+  });
+
+  // ── Firebase ──
+  if (db) {
+    onValue(ref(db, 'questions'), snap => {
+      allQ = [];
+      if (snap.exists()) snap.forEach(c => allQ.push({ id: c.key, ...c.val() }));
+      document.getElementById('q-total').textContent = allQ.length + ' 則問題';
+      render();
+    });
+  }
+
+  // ── 渲染 ──
+  function render() {
+    const list = document.getElementById('q-list');
+    const empty = document.getElementById('empty-state');
+
+    if (allQ.length === 0) {
+      empty.style.display = 'block';
+      list.querySelectorAll('.q-card').forEach(el => el.remove());
+      return;
+    }
+    empty.style.display = 'none';
+
+    const sorted = [...allQ].sort((a, b) =>
+      sortMode === 'votes'
+        ? (b.votes||0) - (a.votes||0) || (b.ts||0) - (a.ts||0)
+        : (b.ts||0) - (a.ts||0)
+    );
+
+    const maxVotes = Math.max(...sorted.map(q => q.votes||0), 0);
+    const existing = {};
+    list.querySelectorAll('.q-card').forEach(el => existing[el.dataset.id] = el);
+    const newIds = new Set(sorted.map(q => q.id));
+    Object.keys(existing).forEach(id => { if (!newIds.has(id)) existing[id].remove(); });
+
+    sorted.forEach(q => {
+      const isTop = maxVotes > 0 && (q.votes||0) === maxVotes;
+      const isNew = Date.now() - (q.ts||0) < 60000;
+      const isVoted = votedIds.has(q.id);
+      const votes = q.votes || 0;
+
+      if (existing[q.id]) {
+        const el = existing[q.id];
+        el.querySelector('.vote-num').textContent = votes;
+        el.querySelector('.vote-num').className = 'vote-num' + (votes > 0 ? ' has-votes' : '');
+        el.querySelector('.vote-btn').className = 'vote-btn' + (isVoted ? ' voted' : '');
+        el.classList.toggle('top', isTop);
+        list.appendChild(el);
+      } else {
+        const el = document.createElement('div');
+        el.className = 'q-card' + (isTop ? ' top' : '');
+        el.dataset.id = q.id;
+        el.innerHTML = `
+          <div class="vote-col">
+            <button class="vote-btn${isVoted ? ' voted' : ''}">👍</button>
+            <div class="vote-num${votes > 0 ? ' has-votes' : ''}">${votes}</div>
+          </div>
+          <div class="q-body">
+            <div class="q-text">${esc(q.text)}</div>
+            <div class="q-meta">
+              <span>${q.name === '匿名' ? '👤' : '🙋'} ${esc(q.name||'匿名')}</span>
+              ${isNew ? '<span class="new-pill">NEW</span>' : ''}
+              <span style="margin-left:auto">${fmtTime(q.ts)}</span>
+            </div>
+          </div>`;
+        el.querySelector('.vote-btn').addEventListener('click', () => {
+          if (votedIds.has(q.id)) { showToast('已經按過讚了', true); return; }
+          votedIds.add(q.id);
+          localStorage.setItem('qa_voted', JSON.stringify([...votedIds]));
+          el.querySelector('.vote-btn').classList.add('voted');
+          if (db) runTransaction(ref(db, 'questions/' + q.id + '/votes'), cur => (cur||0) + 1);
+        });
+        list.appendChild(el);
+      }
+    });
+  }
+
+  function fmtTime(ts) {
+    if (!ts) return '';
+    const d = Date.now() - ts;
+    if (d < 60000) return '剛剛';
+    if (d < 3600000) return Math.floor(d/60000) + ' 分前';
+    return new Date(ts).toLocaleTimeString('zh-TW', { hour:'2-digit', minute:'2-digit' });
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function showToast(msg, isError) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.className = 'toast' + (isError ? ' error' : '');
+    void t.offsetWidth;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2200);
+  }
+</script>
+</body>
+</html>
